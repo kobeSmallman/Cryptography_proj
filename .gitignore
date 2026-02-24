@@ -1,25 +1,7 @@
-﻿# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-
-# Python cache / build
+﻿.venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-
-# Test / coverage
 .pytest_cache/
-.coverage
-htmlcov/
-
-# OS/editor
-.DS_Store
-Thumbs.db
+exports/
 .vscode/
 .idea/
-
-# Generated outputs
-exports/
