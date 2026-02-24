@@ -1,7 +1,25 @@
-﻿.venv/
+﻿# Virtual environments
+.venv/
+
+# Python cache / build
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Packaging/build artifacts
+*.egg-info/
+build/
+dist/
+
+# Test cache
 .pytest_cache/
-exports/
+.coverage
+htmlcov/
+
+# Editor
 .vscode/
 .idea/
+
+# Generated outputs
+exports/
