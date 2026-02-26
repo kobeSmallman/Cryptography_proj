@@ -32,7 +32,7 @@ class TraceStep:
     algorithm_steps: List[str] = field(default_factory=list)
     outputs: Dict[str, Any] = field(default_factory=dict)
 
-    trace_sumamry: List[str] = field(default_factory=list)
+    trace_summary: List[str] = field(default_factory=list)
     trace_full: List[str] = field(default_factory=list)
 
     pros: List[str] = field(default_factory=list)
