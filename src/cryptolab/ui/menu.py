@@ -172,16 +172,21 @@ def _rsa_keygen_module(state) -> None:
         trace_summary=result["trace_summary"],
         trace_full=result["trace_full"],
         pros=[
-            "Matches theory for gcd, exteneded Euclid, mod inverse, and mod exponentiation.",
-            "Shows how to use the Miller-Rabin primality test.",
-            "Trace levels SUMMARY and FULL are available.",
+            "Anyone can ecnrypt and verify with (n, e) but only those with d can decrypt and sign.",
+            "Securrity is tied to the difficulty of factoring n = p*q",
+            "Trace supports understanding and full mode shows the two ideas: Miller_rabin prime justification and extended Euclid Modular Inverse reasoning",
 
         ],
         cons=[
-            "This is a demo module, so it doesn't perform any real cryptographic operations.",
+            "Keygen cost scales fast and prime generation + modular arithemtic becomes super slow as bit sizes increases.",
+            "It isn't safe without padding/encoding becuase raw textbook style RSA is more vulnerable to predicable attakcs. Real worrld RSA uses OAEP for ecnryption and PSS for singatures (Or other methods like CTR or CFB).",
+            "It isn't good for bulk data. RSA operations are expensive and message size is limited (< n). In real world RSA protects keys while symmetric cipphers encrypt the actual bulk.",
+
         ],
         pitfalls=[
-            "Small bit sizes are insecure in real life because it can be easily factored.",
+            "If gcd(e, phi_n) != 1, d does not exist and keygen fails. So we must choose a different e",
+            "If p == q, factoring gets easier and the key is broken so we must regenerate q.",
+            "If primes are too small or rounds too low then keys become factorable, the demo is for speed not optimal security.",
         ],
         code_ref=[
             "src/cryptolab/crypto/math.py::{gcd, egcd, modinv, modexp}",

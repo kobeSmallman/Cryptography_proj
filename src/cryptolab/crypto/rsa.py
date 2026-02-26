@@ -42,10 +42,10 @@ def _egcd_trace(a: int, b: int) -> Tuple[int, int, int, List[str]]:
     return old_r, old_x, old_y, steps
 
 def rsa_generate_keypair(
-    bits: int = 128, # default is 128 bits because that's what's needed for 2048 bit keys
-    mr_rounds: int = 24, # 24 for 2048 bit keys
+    bits: int = 128, # default 128 bit primes are for fast demo and real RSA uses much higher values (1024 and 2048 bit modulus)
+    mr_rounds: int = 24, # default is 24 rounds
     seed: int | None = None, # None for random seed
-    e_default: int = 65537, # 65537 specifically because it's the default for 2048 bit keys) -> Dict[str, Any]:
+    e_default: int = 65537, # 65537 specifically because it is prime
 ) -> Dict[str, Any]:   
     """
     RSA keygen is done in this order:
