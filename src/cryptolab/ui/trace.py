@@ -41,6 +41,38 @@ class TraceStep:
 
     code_ref: List[str] = field(default_factory=list) # list of code references for this step, e.g. ["rsa.py:generate_keys"]
 
+    def to_json_obj(self) -> dict:
+        return {
+            "module": self.module,
+            "title": self.title,
+            "goal": self.goal,
+            "inputs": self.inputs,
+            "algorithm_steps": self.algorithm_steps,
+            "outputs": self.outputs,
+            "trace_summary": self.trace_summary,
+            "trace_full": self.trace_full,
+            "pros": self.pros,
+            "cons": self.cons,
+            "pitfalls": self.pitfalls,
+            "code_ref": self.code_ref
+        }
+    @staticmethod
+    def from_json_obj(obj: dict) -> "TraceStep":
+        return TraceStep(
+            module=obj.get("module", ""),
+            title=obj.get("title", ""),
+            goal=obj.get("goal", ""),
+            inputs=obj.get("inputs", {}),
+            algorithm_steps=obj.get("algorithm_steps", []),
+            outputs=obj.get("outputs", {}),
+            trace_summary=obj.get("trace_summary", []),
+            trace_full=obj.get("trace_full", []),
+            pros=obj.get("pros", []),
+            cons=obj.get("cons", []),
+            pitfalls=obj.get("pitfalls", []),
+            code_ref=obj.get("code_ref", [])
+        )
+
 
 class TraceCollector:
     # Collects TraceStep records for the current session, allowing for adding new steps and retrieving the trace history.

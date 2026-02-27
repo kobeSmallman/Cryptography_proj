@@ -25,3 +25,14 @@ def load_session(path: Path) -> Optional[SessionState]:
 
 def save_session(path: Path, session: SessionState) -> None:
     path.write_text(json.dumps(session.to_json_obj(), indent=2), encoding="UTF-8")
+def load_trace(path: Path):
+    if not path.exists():
+        return []
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        #if file is corrupt we just start fresh
+        return []
+def save_trace(path: Path, trace_steps) -> None:
+    # trace_steps should be a list of JSON-able dicts
+    path.write_text(json.dumps(trace_steps, indent=2), encoding="UTF-8")

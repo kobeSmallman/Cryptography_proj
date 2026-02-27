@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cryptolab.models.session import SessionState
-from cryptolab.io.storage import load_session, save_session
-from cryptolab.ui.trace import TraceCollector, TraceLevel
+from cryptolab.io.storage import load_session, save_session, load_trace
+from cryptolab.ui.trace import TraceCollector, TraceLevel, TraceStep
 from cryptolab.ui.menu import run_menu_loop
 
 @dataclass
@@ -42,6 +42,10 @@ def main() -> int:
         exports_dir=exports_dir,
         session_path=session_path,
     )
+    trace_path = exports_dir / "trace.json"
+    for obj in load_trace(trace_path):
+        state.trace.add(TraceStep.from_json_obj(obj))
+
 
     print("\nCryptoLab booted and UI is ready!\n")
 
