@@ -48,9 +48,9 @@ def egcd_trace(a: int, b: int) -> Tuple[int, int, int, List[str]]:
         old_y, y = y, old_y - q * y
         steps.append(f"Update: old_r={old_r}, r={r}, old_x={old_x}, x={x}, old_y={old_y}, y={y}")
 
-        steps.append(f"Done: gcd={old_r}, x={old_x}, y={old_y} (so a*x + b*y = gcd)")
-        return old_r, old_x, old_y, steps
-    
+    steps.append(f"Done: gcd={old_r}, x={old_x}, y={old_y} (so a*x + b*y = gcd)")
+    return old_r, old_x, old_y, steps
+
 def modinv(a: int, m: int) -> int:
     """
     Modular inverse: find inv such that (a*inv) % m == 1
