@@ -13,5 +13,3 @@ def test_dh_shared_secret_matches():
     assert 0 <= A < p
     assert 0 <= B < p
     assert 0 <= s < p
-
-

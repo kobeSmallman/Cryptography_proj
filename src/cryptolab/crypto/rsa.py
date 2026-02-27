@@ -13,7 +13,7 @@ trace_full: deeper steps for full mode
 
 from typing import Any, Dict, List, Tuple
 
-from cryptolab.crypto.math import gcd, modinv, bit_length
+from cryptolab.crypto.math import gcd, modinv, modexp, modexp_trace, bit_length
 from cryptolab.crypto.prng import XorShift64Star
 from cryptolab.crypto.primes import generate_prime
 
@@ -114,7 +114,7 @@ def rsa_generate_keypair(
     trace_full.append(f"Check: gcd(e, phi_n) = {g} (must be 1)")
     trace_full.append(f"d = x mod phi_n = {x} mod {phi_n} = {d}")
 
-    #Return values:
+    # Return values:
     return {
         "p": p,
         "q": q,
@@ -129,3 +129,67 @@ def rsa_generate_keypair(
         "trace_full": trace_full,
     }
 
+
+def rsa_encrypt(m: int, e: int, n: int) -> Dict[str, Any]:
+    """
+    Textbook RSA encryption: c = m^e mod n.
+
+    m must satisfy 0 < m < n.
+    Returns dict with 'c', 'trace_summary', 'trace_full'.
+    """
+    if not (0 < m < n):
+        raise ValueError(f"Message m={m} must satisfy 0 < m < n={n}")
+
+    trace_summary: List[str] = [
+        "RSA ENCRYPT: c = m^e mod n",
+        f"m (message) = {m}",
+        f"e (public exponent) = {e}",
+        f"n (modulus, bit_length={bit_length(n)}) = {n}",
+    ]
+
+    c, exp_steps = modexp_trace(m, e, n)
+
+    trace_full: List[str] = list(trace_summary)
+    trace_full.append("Modular exponentiation (square-and-multiply):")
+    trace_full.extend(exp_steps)
+    trace_full.append(f"c = {c}")
+
+    trace_summary.append(f"c (ciphertext) = {c}")
+
+    return {
+        "c":             c,
+        "trace_summary": trace_summary,
+        "trace_full":    trace_full,
+    }
+
+
+def rsa_decrypt(c: int, d: int, n: int) -> Dict[str, Any]:
+    """
+    Textbook RSA decryption: m = c^d mod n.
+
+    Returns dict with 'm', 'trace_summary', 'trace_full'.
+    """
+    if not (0 <= c < n):
+        raise ValueError(f"Ciphertext c={c} must satisfy 0 <= c < n={n}")
+
+    trace_summary: List[str] = [
+        "RSA DECRYPT: m = c^d mod n",
+        f"c (ciphertext) = {c}",
+        f"d (private exponent) = {d}",
+        f"n (modulus, bit_length={bit_length(n)}) = {n}",
+    ]
+
+    m, exp_steps = modexp_trace(c, d, n)
+
+    trace_full: List[str] = list(trace_summary)
+    trace_full.append("Modular exponentiation (square-and-multiply):")
+    trace_full.extend(exp_steps)
+    trace_full.append(f"m = {m}")
+
+    trace_summary.append(f"m (message recovered) = {m}")
+
+    return {
+        "m":             m,
+        "trace_summary": trace_summary,
+        "trace_full":    trace_full,
+    }

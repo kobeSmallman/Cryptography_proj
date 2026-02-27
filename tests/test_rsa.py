@@ -1,4 +1,4 @@
-from cryptolab.crypto.rsa import rsa_generate_keypair
+from cryptolab.crypto.rsa import rsa_generate_keypair, rsa_encrypt, rsa_decrypt
 from cryptolab.crypto.math import gcd, modexp
 
 
@@ -60,4 +60,34 @@ def test_rsa_trace_fields_present():
     r = rsa_generate_keypair(bits=64, mr_rounds=12, seed=5)
     assert isinstance(r["trace_summary"], list) and len(r["trace_summary"]) > 0
     assert isinstance(r["trace_full"], list) and len(r["trace_full"]) > 0
+
+
+def test_rsa_encrypt_decrypt_functions():
+    """rsa_encrypt / rsa_decrypt must round-trip for several messages."""
+    r = rsa_generate_keypair(bits=64, mr_rounds=12, seed=999)
+    n, e, d = r["n"], r["e"], r["d"]
+
+    for m in (2, 42, 12345, 999999):
+        if m >= n or gcd(m, n) != 1:
+            continue
+        enc = rsa_encrypt(m, e, n)
+        dec = rsa_decrypt(enc["c"], d, n)
+        assert dec["m"] == m, f"Round-trip failed for m={m}"
+
+
+def test_rsa_encrypt_returns_trace():
+    """rsa_encrypt result must include non-empty trace lists."""
+    r = rsa_generate_keypair(bits=64, mr_rounds=12, seed=7)
+    enc = rsa_encrypt(42, r["e"], r["n"])
+    assert isinstance(enc["trace_summary"], list) and len(enc["trace_summary"]) > 0
+    assert isinstance(enc["trace_full"],    list) and len(enc["trace_full"])    > 0
+
+
+def test_rsa_decrypt_returns_trace():
+    """rsa_decrypt result must include non-empty trace lists."""
+    r = rsa_generate_keypair(bits=64, mr_rounds=12, seed=7)
+    enc = rsa_encrypt(42, r["e"], r["n"])
+    dec = rsa_decrypt(enc["c"], r["d"], r["n"])
+    assert isinstance(dec["trace_summary"], list) and len(dec["trace_summary"]) > 0
+    assert isinstance(dec["trace_full"],    list) and len(dec["trace_full"])    > 0
 
