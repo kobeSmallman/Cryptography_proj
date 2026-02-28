@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Tuple
 from cryptolab.crypto.math import gcd, modinv, modexp, modexp_trace, bit_length
 from cryptolab.crypto.prng import XorShift64Star
 from cryptolab.crypto.primes import generate_prime
+from cryptolab.crypto.hash import sha256, sha256_trace
 
 def _egcd_trace(a: int, b: int) -> Tuple[int, int, int, List[str]]:
     """
@@ -190,6 +191,99 @@ def rsa_decrypt(c: int, d: int, n: int) -> Dict[str, Any]:
 
     return {
         "m":             m,
+        "trace_summary": trace_summary,
+        "trace_full":    trace_full,
+    }
+
+
+def rsa_sign(message: bytes, d: int, n: int) -> Dict[str, Any]:
+    """
+    RSA digital signature (Requirement 4).
+
+    Steps:
+      1. Hash the message with SHA-256 to get a fixed-size digest h.
+      2. Reduce h mod n so it fits within the modulus.
+      3. Sign: sig = h^d mod n  (only the private key holder can do this).
+    """
+    trace_summary: List[str] = []
+    trace_full: List[str] = []
+
+    # Step 1: hash the message
+    trace_summary.append("Step 1) Hash the message using SHA-256")
+    hash_result = sha256_trace(message)
+    h = hash_result["digest"]
+    trace_summary.append(f"SHA-256(message) = {hash_result['digest_hex']}")
+    trace_full.append(f"message = {message!r}")
+    trace_full.extend(hash_result["trace_full"])
+
+    # Step 2: reduce h mod n so it fits the modulus
+    # SHA-256 gives 256 bits but n might be smaller (e.g. 128-bit demo keys)
+    trace_summary.append("Step 2) Reduce h mod n to fit the modulus")
+    h_mod = h % n
+    trace_summary.append(f"h mod n = {h_mod}")
+    trace_full.append(f"h mod n = {h_mod}")
+
+    # Step 3: sign with the private exponent d
+    trace_summary.append("Step 3) Sign: sig = h^d mod n (modular exponentiation)")
+    sig, exp_steps = modexp_trace(h_mod, d, n)
+    trace_full.extend(exp_steps)
+    trace_full.append(f"sig = {sig}")
+    trace_summary.append(f"sig = {sig}")
+
+    return {
+        "sig":           sig,
+        "h":             h,          # full 256-bit digest (integer)
+        "h_mod":         h_mod,      # digest reduced mod n (what actually gets signed)
+        "trace_summary": trace_summary,
+        "trace_full":    trace_full,
+    }
+
+
+def rsa_verify(message: bytes, sig: int, e: int, n: int) -> Dict[str, Any]:
+    """
+    RSA signature verification (Requirement 4).
+
+    Steps:
+      1. Hash the message with SHA-256 to get the expected digest h.
+      2. Recover h' from the signature: h' = sig^e mod n (public key).
+      3. Compare: if h' == h mod n the signature is valid.
+    """
+    if not (0 <= sig < n):
+        raise ValueError("sig must satisfy 0 <= sig < n")
+
+    trace_summary: List[str] = []
+    trace_full: List[str] = []
+
+    # Step 1: hash the message the same way the signer did
+    trace_summary.append("Step 1) Hash the message using SHA-256 (same as signer)")
+    hash_result = sha256_trace(message)
+    h = hash_result["digest"]
+    h_mod = h % n
+    trace_summary.append(f"SHA-256(message) = {hash_result['digest_hex']}")
+    trace_summary.append(f"h mod n = {h_mod}")
+    trace_full.append(f"message = {message!r}")
+    trace_full.extend(hash_result["trace_full"])
+    trace_full.append(f"h mod n = {h_mod}")
+
+    # Step 2: recover the digest from the signature using the public exponent e
+    trace_summary.append("Step 2) Recover hash: h' = sig^e mod n (modular exponentiation)")
+    trace_full.append(f"sig = {sig}")
+    h_recovered, exp_steps = modexp_trace(sig, e, n)
+    trace_full.extend(exp_steps)
+    trace_full.append(f"h' (recovered) = {h_recovered}")
+
+    # Step 3: compare recovered digest with expected
+    valid = (h_mod == h_recovered)
+    trace_summary.append(f"Step 3) Compare h' == h mod n -> {h_mod} == {h_recovered}")
+    trace_summary.append(f"Signature {'VALID' if valid else 'INVALID'}")
+    trace_full.append(f"h mod n        = {h_mod}")
+    trace_full.append(f"h' (recovered) = {h_recovered}")
+    trace_full.append(f"Match: {valid} => signature is {'VALID' if valid else 'INVALID'}")
+
+    return {
+        "valid":         valid,
+        "h_mod":         h_mod,        # expected digest
+        "h_recovered":   h_recovered,  # digest from signature
         "trace_summary": trace_summary,
         "trace_full":    trace_full,
     }

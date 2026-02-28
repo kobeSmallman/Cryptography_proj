@@ -33,7 +33,10 @@ class SessionState:
    rsa_last_c: Optional[int] = None
    # DES-CBC encrypt/decrypt (last operation, ciphertext as hex string)
    des_ciphertext_hex:  Optional[str] = None
-   des_last_plaintext:  Optional[str] = None  # recovered plaintext as a string
+   des_last_plaintext:  Optional[str] = None
+   # RSA digital signature (last operation)
+   sig_message:         Optional[str] = None  # signed message (text)
+   sig_last:            Optional[int] = None  # signature integer
    @staticmethod
    def new() -> "SessionState":
        return SessionState()
@@ -58,4 +61,5 @@ class SessionState:
            "KDF key/IV derived":                  f"{yn(self.kdf_key_hex)}/{yn(self.kdf_iv_hex)}",
            "RSA last encrypt m/c":                f"{yn(self.rsa_last_m)}/{yn(self.rsa_last_c)}",
            "DES ciphertext / plaintext":           f"{yn(self.des_ciphertext_hex)}/{yn(self.des_last_plaintext)}",
+           "Signature present":                    yn(self.sig_last),
        }

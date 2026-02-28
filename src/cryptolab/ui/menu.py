@@ -11,7 +11,7 @@ from cryptolab.ui.trace import TraceLevel, TraceStep
 from cryptolab.ui.render import hr, big_title, print_kv_block, print_numbered_steps
 from cryptolab.io.export_html import export_html
 from cryptolab.io.export_md import export_markdown
-from cryptolab.crypto.rsa import rsa_generate_keypair, rsa_encrypt, rsa_decrypt
+from cryptolab.crypto.rsa import rsa_generate_keypair, rsa_encrypt, rsa_decrypt, rsa_sign, rsa_verify
 from cryptolab.crypto.dh import dh_key_exchange
 from cryptolab.crypto.kdf import derive_des_key_iv
 from cryptolab.crypto.des.modes import encrypt_cbc_trace, decrypt_cbc_trace
@@ -521,6 +521,89 @@ def _des_cbc_module(state) -> None:
     _back_to_menu(state)
 
 
+def _rsa_signature_module(state) -> None:
+    """ RSA digital signature: sign a message then verify it"""
+    state.trace.clear()
+
+    if state.session.rsa_n is None:
+        print("\nNo RSA keys in session. Run RSA Key Generation (option 2) first.")
+        return
+
+    n = state.session.rsa_n
+    e = state.session.rsa_e
+    d = state.session.rsa_d
+
+    message_str = input("\nEnter message to sign: ").strip()
+    if not message_str:
+        print("Empty message — aborting.")
+        return
+
+    message_bytes = message_str.encode("utf-8")
+
+    sign_result   = rsa_sign(message_bytes, d, n)
+    verify_result = rsa_verify(message_bytes, sign_result["sig"], e, n)
+
+    state.session.sig_message = message_str
+    state.session.sig_last    = sign_result["sig"]
+
+    k = lambda sym, exp: _label(state, sym, exp)
+
+    step = TraceStep(
+        module="RSA-SIG",
+        title="RSA Digital Signature (Requirement 4)",
+        goal=(
+            "Sign a message with the private key (n, d) using SHA-256 as the digest, "
+            "then verify the signature with the public key (n, e)."
+        ),
+        inputs={
+            k("message", "message"):         message_str,
+            k("d", "private_exponent_d"):    str(d),
+            k("n", "modulus_n"):             str(n),
+        },
+        algorithm_steps=[
+            "Compute h = SHA-256(message)  — manual Merkle-Damgård construction.",
+            "Reduce h mod n so it fits the modulus.",
+            "Sign:   sig = h^d mod n  (square-and-multiply, private key).",
+            "Verify: h'  = sig^e mod n  (square-and-multiply, public key).",
+            "Accept if h' == h mod n.",
+        ],
+        outputs={
+            k("sha256_digest", "sha256_digest"):    sign_result["h_mod"] and f"{sign_result['h']:064x}",
+            k("h_mod_n", "h_mod_n"):               str(sign_result["h_mod"]),
+            k("sig", "signature_sig"):             str(sign_result["sig"]),
+            k("h_prime", "h_prime_recovered"):     str(verify_result["h_recovered"]),
+            "Signature valid":                     str(verify_result["valid"]),
+        },
+        trace_summary=sign_result["trace_summary"] + ["---"] + verify_result["trace_summary"],
+        trace_full=sign_result["trace_full"]    + ["---"] + verify_result["trace_full"],
+        pros=[
+            "Only the holder of d can produce a valid signature; anyone with (n, e) can verify",
+            "SHA-256 digest binds the signature tightly to the exact message content",
+            "Trace exposes every SHA-256 round and every modexp square-and-multiply step",
+        ],
+        cons=[
+            "Textbook RSA-sign with no padding (PSS) is malleable — use PSS in production",
+            "SHA-256 digest is 256 bits; if n < 2^256 the digest is reduced mod n, losing entropy.",
+            "Signature size equals key size — large for bulk data",
+        ],
+        pitfalls=[
+            "Never sign the raw message — always sign a hash; this prevents length-extension attacks",
+            "Reusing (d, n) across sign and encrypt contexts weakens security",
+            "A deterministic hash means the same message always gives the same sig, enabling replay attacks without nonces.",
+        ],
+        code_ref=[
+            "src/cryptolab/crypto/hash.py::{sha256, sha256_trace}",
+            "src/cryptolab/crypto/rsa.py::{rsa_sign, rsa_verify}",
+            "src/cryptolab/crypto/math.py::{modexp, modexp_trace}",
+        ],
+    )
+
+    state.trace.add(step)
+    save_trace(state.exports_dir / "trace.json", [s.to_json_obj() for s in state.trace.steps()])
+    _render_step_to_terminal(state, step)
+    _back_to_menu(state)
+
+
 def _export(state) -> None:
     report_path = (state.exports_dir / "report.html").resolve()
     md_path = (state.exports_dir / "transcript.md").resolve()
@@ -572,9 +655,10 @@ def run_menu_loop(state) -> None:
         print(" 1) Demo (UI + Trace + Export demo)")
         print(" 2) RSA Key Generation (Requirement 1)")
         print(" 3) Diffie-Hellman Key Exchange (Requirement 2)")
-        print(" 4) RSA Encrypt / Decrypt     (Requirement 3 — needs RSA keys from step 2)")
-        print(" 5) KDF: Derive DES Key + IV  (Requirement 3 — needs DH secret from step 3)")
-        print(" 6) DES-CBC Encrypt / Decrypt (Requirement 3 — needs KDF from step 5)")
+        print(" 4) RSA Encrypt / Decrypt     (needs RSA keys from step 2)")
+        print(" 5) KDF: Derive DES Key + IV  (needs DH secret from step 3)")
+        print(" 6) DES-CBC Encrypt / Decrypt (needs KDF from step 5)")
+        print(" 7) RSA Digital Signature     (needs RSA keys from step 2)")
 
         print("\nOther:")
         print(" e) Export report (HTML + Markdown)")
@@ -608,6 +692,9 @@ def run_menu_loop(state) -> None:
             continue
         if choice == "6":
             _des_cbc_module(state)
+            continue
+        if choice == "7":
+            _rsa_signature_module(state)
             continue
         if choice == "e":
             _export(state)
