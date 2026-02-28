@@ -1,4 +1,7 @@
-from cryptolab.crypto.des.modes import encrypt_cbc, decrypt_cbc
+from cryptolab.crypto.des.modes import (
+    encrypt_cbc, decrypt_cbc,
+    encrypt_cbc_trace, decrypt_cbc_trace,
+)
 
 
 def test_cbc_roundtrip_short():
@@ -56,3 +59,46 @@ def test_cbc_ciphertext_length():
         msg = bytes(range(n))
         ct = encrypt_cbc(msg, key, iv)
         assert len(ct) % 8 == 0, f"Ciphertext not block-aligned for input length {n}"
+
+
+# ── trace variant tests ───────────────────────────────────────────────────────
+
+_KEY = b'\x13\x34\x57\x79\x9B\xBC\xDF\xF1'
+_IV  = b'\x00' * 8
+_MSG = b'Hello, DES-CBC!'
+
+
+def test_encrypt_cbc_trace_returns_trace_fields():
+    """encrypt_cbc_trace must return non-empty trace_summary and trace_full."""
+    r = encrypt_cbc_trace(_MSG, _KEY, _IV)
+    assert isinstance(r["trace_summary"], list) and len(r["trace_summary"]) > 0
+    assert isinstance(r["trace_full"],    list) and len(r["trace_full"])    > 0
+
+
+def test_decrypt_cbc_trace_returns_trace_fields():
+    """decrypt_cbc_trace must return non-empty trace_summary and trace_full."""
+    ct = encrypt_cbc(_MSG, _KEY, _IV)
+    r  = decrypt_cbc_trace(ct, _KEY, _IV)
+    assert isinstance(r["trace_summary"], list) and len(r["trace_summary"]) > 0
+    assert isinstance(r["trace_full"],    list) and len(r["trace_full"])    > 0
+
+
+def test_encrypt_cbc_trace_ciphertext_matches_non_trace():
+    """Trace variant must produce the same ciphertext as the plain variant."""
+    r  = encrypt_cbc_trace(_MSG, _KEY, _IV)
+    ct = encrypt_cbc(_MSG, _KEY, _IV)
+    assert r["ciphertext"] == ct
+
+
+def test_decrypt_cbc_trace_plaintext_matches_non_trace():
+    """Trace variant must recover the same plaintext as the plain variant."""
+    ct = encrypt_cbc(_MSG, _KEY, _IV)
+    r  = decrypt_cbc_trace(ct, _KEY, _IV)
+    pt = decrypt_cbc(ct, _KEY, _IV)
+    assert r["plaintext"] == pt == _MSG
+
+
+def test_encrypt_cbc_trace_full_mentions_blocks():
+    """Full trace must contain at least one block-level line."""
+    r = encrypt_cbc_trace(_MSG, _KEY, _IV)
+    assert any("Block" in line for line in r["trace_full"])

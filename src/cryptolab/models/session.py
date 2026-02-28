@@ -25,7 +25,15 @@ class SessionState:
    dh_A: Optional[int] = None
    dh_B: Optional[int] = None
    dh_s: Optional[int] = None
-   #Diffie-Hellman key exchange + DES + signatures
+   # KDF — derived from DH shared secret (stored as hex strings for JSON safety)
+   kdf_key_hex: Optional[str] = None
+   kdf_iv_hex:  Optional[str] = None
+   # RSA encrypt/decrypt (last operation)
+   rsa_last_m: Optional[int] = None
+   rsa_last_c: Optional[int] = None
+   # DES-CBC encrypt/decrypt (last operation, ciphertext as hex string)
+   des_ciphertext_hex:  Optional[str] = None
+   des_last_plaintext:  Optional[str] = None  # recovered plaintext as a string
    @staticmethod
    def new() -> "SessionState":
        return SessionState()
@@ -45,8 +53,9 @@ class SessionState:
        def yn(v: object) -> str:
            return "YES" if v is not None else "NO"
        return {
-           #"RSA values and DH and more values which what this does is to show if the values are present or not"
            "RSA keys present (p/q/n/phi_n/e/d)": f"{yn(self.rsa_p)}/{yn(self.rsa_q)}/{yn(self.rsa_n)}/{yn(self.rsa_phi_n)}/{yn(self.rsa_e)}/{yn(self.rsa_d)}",
-           "DH values present (p/g/A/B/s)": f"{yn(self.dh_p)}/{yn(self.dh_g)}/{yn(self.dh_A)}/{yn(self.dh_B)}/{yn(self.dh_s)}"
-
+           "DH values present (p/g/A/B/s)":      f"{yn(self.dh_p)}/{yn(self.dh_g)}/{yn(self.dh_A)}/{yn(self.dh_B)}/{yn(self.dh_s)}",
+           "KDF key/IV derived":                  f"{yn(self.kdf_key_hex)}/{yn(self.kdf_iv_hex)}",
+           "RSA last encrypt m/c":                f"{yn(self.rsa_last_m)}/{yn(self.rsa_last_c)}",
+           "DES ciphertext / plaintext":           f"{yn(self.des_ciphertext_hex)}/{yn(self.des_last_plaintext)}",
        }

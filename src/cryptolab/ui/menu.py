@@ -11,8 +11,10 @@ from cryptolab.ui.trace import TraceLevel, TraceStep
 from cryptolab.ui.render import hr, big_title, print_kv_block, print_numbered_steps
 from cryptolab.io.export_html import export_html
 from cryptolab.io.export_md import export_markdown
-from cryptolab.crypto.rsa import rsa_generate_keypair
+from cryptolab.crypto.rsa import rsa_generate_keypair, rsa_encrypt, rsa_decrypt
 from cryptolab.crypto.dh import dh_key_exchange
+from cryptolab.crypto.kdf import derive_des_key_iv
+from cryptolab.crypto.des.modes import encrypt_cbc_trace, decrypt_cbc_trace
 from cryptolab.io.storage import save_trace
 
 def _label(state, symbol: str, expanded: str) -> str:
@@ -293,6 +295,232 @@ def _dh_key_exchange_module(state) -> None:
 
 
 
+def _rsa_encrypt_decrypt_module(state) -> None:
+    """Module 4 — RSA textbook encrypt then decrypt (uses session RSA keys)."""
+    state.trace.clear()
+
+    if state.session.rsa_n is None:
+        print("\nNo RSA keys in session. Run RSA Key Generation (option 2) first.")
+        return
+
+    n = state.session.rsa_n
+    e = state.session.rsa_e
+    d = state.session.rsa_d
+
+    print(f"\nRSA modulus n has {n.bit_length()} bits.")
+    print("Enter a message as a positive integer m satisfying 1 < m < n.")
+    m_str = input("m = ").strip()
+    try:
+        m = int(m_str)
+    except ValueError:
+        print("Invalid integer — aborting.")
+        return
+    if not (1 < m < n):
+        print(f"m must satisfy 1 < m < n={n}. Aborting.")
+        return
+
+    enc_result = rsa_encrypt(m, e, n)
+    dec_result = rsa_decrypt(enc_result["c"], d, n)
+
+    state.session.rsa_last_m = m
+    state.session.rsa_last_c = enc_result["c"]
+
+    k = lambda sym, exp: _label(state, sym, exp)
+
+    step = TraceStep(
+        module="RSA-ENC",
+        title="RSA Message Encryption & Decryption (Requirement 3)",
+        goal="Encrypt a plaintext integer m with the public key (n, e), then decrypt with (n, d) to verify round-trip.",
+        inputs={
+            k("m", "message_m"):             str(m),
+            k("e", "public_exponent_e"):      str(e),
+            k("n", "modulus_n"):              str(n),
+        },
+        algorithm_steps=[
+            "Verify 0 < m < n (message must fit in the modulus).",
+            "Encrypt:  c = m^e mod n  (square-and-multiply modular exponentiation).",
+            "Decrypt:  m = c^d mod n  (same algorithm, private exponent d).",
+            "Verify recovered m equals original m.",
+        ],
+        outputs={
+            k("c", "ciphertext_c"):           str(enc_result["c"]),
+            k("m_recovered", "message_recovered"): str(dec_result["m"]),
+            "Round-trip OK":                  str(dec_result["m"] == m),
+        },
+        trace_summary=enc_result["trace_summary"] + ["---"] + dec_result["trace_summary"],
+        trace_full=enc_result["trace_full"]    + ["---"] + dec_result["trace_full"],
+        pros=[
+            "Only the holder of d can decrypt; anyone with (n, e) can encrypt.",
+            "Trace exposes every square-and-multiply step of modular exponentiation.",
+        ],
+        cons=[
+            "Textbook RSA with no padding is vulnerable to chosen-plaintext attacks.",
+            "Message m must be smaller than n — unsuitable for long messages.",
+            "Real-world RSA encryption uses OAEP padding.",
+        ],
+        pitfalls=[
+            "If m >= n the operation is meaningless — the code enforces m < n.",
+            "Small messages (m << n) leak information without padding.",
+        ],
+        code_ref=[
+            "src/cryptolab/crypto/rsa.py::{rsa_encrypt, rsa_decrypt}",
+            "src/cryptolab/crypto/math.py::{modexp, modexp_trace}",
+        ],
+    )
+
+    state.trace.add(step)
+    save_trace(state.exports_dir / "trace.json", [s.to_json_obj() for s in state.trace.steps()])
+    _render_step_to_terminal(state, step)
+    _back_to_menu(state)
+
+
+def _kdf_module(state) -> None:
+    """Module 5 — KDF: derive DES key and IV from the DH shared secret."""
+    state.trace.clear()
+
+    if state.session.dh_s is None:
+        print("\nNo DH shared secret in session. Run Diffie-Hellman Key Exchange (option 3) first.")
+        return
+
+    s = state.session.dh_s
+    result = derive_des_key_iv(s)
+
+    state.session.kdf_key_hex = result["key"].hex()
+    state.session.kdf_iv_hex  = result["iv"].hex()
+
+    k = lambda sym, exp: _label(state, sym, exp)
+
+    step = TraceStep(
+        module="KDF",
+        title="Key Derivation Function (KDF) — DH Secret → DES Key + IV",
+        goal="Derive a deterministic 8-byte DES key and 8-byte IV from the DH shared secret s using manual XOR-folding.",
+        inputs={
+            k("s", "shared_secret_s"): str(s),
+            "s bit_length":            s.bit_length(),
+        },
+        algorithm_steps=[
+            "Encode s as big-endian bytes.",
+            "Zero-pad to the nearest multiple of 8 bytes.",
+            "Split into 8-byte blocks and XOR all blocks together → base material (8 bytes).",
+            "key = base with byte[0] XOR 0x01   (counter = 1).",
+            "iv  = base with byte[0] XOR 0x02   (counter = 2).",
+        ],
+        outputs={
+            k("key", "des_key_hex"):  result["key"].hex(),
+            k("iv",  "des_iv_hex"):   result["iv"].hex(),
+        },
+        trace_summary=result["trace_summary"],
+        trace_full=result["trace_full"],
+        pros=[
+            "Fully manual — no external crypto libraries.",
+            "Deterministic: the same shared secret always produces the same key/IV.",
+            "Counter differentiation (XOR 0x01 vs 0x02) ensures key ≠ IV.",
+        ],
+        cons=[
+            "XOR-folding is not a cryptographically secure KDF (use HKDF in production).",
+            "Security inherits entirely from the DH shared secret entropy.",
+        ],
+        pitfalls=[
+            "Reusing the same DH secret reuses the same key/IV — always run a fresh DH exchange.",
+            "The derived key is only as strong as the DH prime size.",
+        ],
+        code_ref=[
+            "src/cryptolab/crypto/kdf.py::derive_des_key_iv",
+            "src/cryptolab/crypto/dh.py::dh_key_exchange",
+        ],
+    )
+
+    state.trace.add(step)
+    save_trace(state.exports_dir / "trace.json", [s.to_json_obj() for s in state.trace.steps()])
+    _render_step_to_terminal(state, step)
+    _back_to_menu(state)
+
+
+def _des_cbc_module(state) -> None:
+    """Module 6 — DES-CBC encrypt a message, then decrypt it to verify."""
+    state.trace.clear()
+
+    if state.session.kdf_key_hex is None:
+        print("\nNo DES key in session. Run KDF (option 5) first.")
+        return
+
+    key = bytes.fromhex(state.session.kdf_key_hex)
+    iv  = bytes.fromhex(state.session.kdf_iv_hex)
+
+    print(f"\nDES key (hex): {key.hex()}")
+    print(f"IV      (hex): {iv.hex()}")
+    plaintext_str = input("\nEnter plaintext message to encrypt: ").strip()
+    if not plaintext_str:
+        print("Empty message — aborting.")
+        return
+
+    plaintext_bytes = plaintext_str.encode("utf-8")
+
+    enc_result = encrypt_cbc_trace(plaintext_bytes, key, iv)
+    dec_result = decrypt_cbc_trace(enc_result["ciphertext"], key, iv)
+
+    state.session.des_ciphertext_hex = enc_result["ciphertext"].hex()
+    state.session.des_last_plaintext = dec_result["plaintext"].decode("utf-8", errors="replace")
+
+    k = lambda sym, exp: _label(state, sym, exp)
+
+    step = TraceStep(
+        module="DES-CBC",
+        title="DES-CBC Message Encryption & Decryption (Requirement 3)",
+        goal=(
+            "Encrypt the plaintext with DES in CBC mode using the KDF-derived key and IV, "
+            "then decrypt to verify the round-trip."
+        ),
+        inputs={
+            k("plaintext", "plaintext_message"): plaintext_str,
+            k("key",       "des_key_hex"):        key.hex(),
+            k("iv",        "des_iv_hex"):          iv.hex(),
+            "plaintext length (bytes)":            len(plaintext_bytes),
+        },
+        algorithm_steps=[
+            "PKCS#7-pad plaintext to a multiple of 8 bytes.",
+            "Encrypt — CBC mode: C_i = DES_K(P_i XOR C_{i-1}),  C_0 = IV.",
+            "Each DES block: IP → 16 Feistel rounds (expand, XOR key, S-boxes, P-perm) → FP.",
+            "Decrypt — CBC mode: P_i = DES_K^{-1}(C_i) XOR C_{i-1},  C_0 = IV.",
+            "Remove PKCS#7 padding and verify recovered plaintext equals original.",
+        ],
+        outputs={
+            k("ciphertext_hex", "ciphertext_hex"):     enc_result["ciphertext"].hex(),
+            k("ciphertext_len", "ciphertext_bytes"):   len(enc_result["ciphertext"]),
+            k("plaintext_recovered", "plaintext_recovered"): state.session.des_last_plaintext,
+            "Round-trip OK": str(state.session.des_last_plaintext == plaintext_str),
+        },
+        trace_summary=enc_result["trace_summary"] + ["---"] + dec_result["trace_summary"],
+        trace_full=enc_result["trace_full"]    + ["---"] + dec_result["trace_full"],
+        pros=[
+            "CBC chaining makes identical plaintext blocks produce different ciphertext blocks.",
+            "DES is a fully manual Feistel cipher — every S-box and permutation is explicit.",
+            "PKCS#7 padding handles messages of any length, not just multiples of 8 bytes.",
+        ],
+        cons=[
+            "DES uses a 56-bit effective key — brute-forceable with modern hardware.",
+            "Textbook CBC with a static IV (no fresh IV per session) is not IND-CPA secure.",
+            "Production systems use AES-256-GCM or ChaCha20-Poly1305.",
+        ],
+        pitfalls=[
+            "IV must be random and unique per encryption in real usage.",
+            "CBC decryption is parallelisable; encryption is not.",
+            "A padding oracle attack can break CBC-PKCS#7 without the key.",
+        ],
+        code_ref=[
+            "src/cryptolab/crypto/des/core.py::{des_block, des_block_trace}",
+            "src/cryptolab/crypto/des/key_schedule.py::generate_round_keys",
+            "src/cryptolab/crypto/des/modes.py::{encrypt_cbc_trace, decrypt_cbc_trace}",
+            "src/cryptolab/crypto/kdf.py::derive_des_key_iv",
+        ],
+    )
+
+    state.trace.add(step)
+    save_trace(state.exports_dir / "trace.json", [s.to_json_obj() for s in state.trace.steps()])
+    _render_step_to_terminal(state, step)
+    _back_to_menu(state)
+
+
 def _export(state) -> None:
     report_path = (state.exports_dir / "report.html").resolve()
     md_path = (state.exports_dir / "transcript.md").resolve()
@@ -344,6 +572,9 @@ def run_menu_loop(state) -> None:
         print(" 1) Demo (UI + Trace + Export demo)")
         print(" 2) RSA Key Generation (Requirement 1)")
         print(" 3) Diffie-Hellman Key Exchange (Requirement 2)")
+        print(" 4) RSA Encrypt / Decrypt     (Requirement 3 — needs RSA keys from step 2)")
+        print(" 5) KDF: Derive DES Key + IV  (Requirement 3 — needs DH secret from step 3)")
+        print(" 6) DES-CBC Encrypt / Decrypt (Requirement 3 — needs KDF from step 5)")
 
         print("\nOther:")
         print(" e) Export report (HTML + Markdown)")
@@ -368,6 +599,15 @@ def run_menu_loop(state) -> None:
             continue
         if choice == "3":
             _dh_key_exchange_module(state)
+            continue
+        if choice == "4":
+            _rsa_encrypt_decrypt_module(state)
+            continue
+        if choice == "5":
+            _kdf_module(state)
+            continue
+        if choice == "6":
+            _des_cbc_module(state)
             continue
         if choice == "e":
             _export(state)
