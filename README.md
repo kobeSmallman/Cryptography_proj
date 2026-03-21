@@ -110,3 +110,12 @@ signature: sig = h^d mod n
 verfication: h_prime = sig^e mod n, compare h_prime == h
 
 
+How to install and run:
+----------------------------
+pip install -e .
+
+python -m cryptolab
+
+python -m pytest tests/ -v
+
+view how_to_run_program.txt to see simple walkthrough of program

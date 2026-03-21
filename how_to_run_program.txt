@@ -1,0 +1,53 @@
+Guide to run
+-------------
+
+Setup
+1. Python installed 3.12 or higher
+2. navigate to folder project is in
+3. pip install -e .
+4. python -m pytest tests/ -v
+
+Starting program
+1. python -m cryptolab
+
+Recommended
+1. Press t so it goes to FULL
+2. Press c so it goes to True
+
+Running modules (Just a Sample of what can be done)
+1. — RSA Key Generation
+    Select: 2
+    Prime size in bits: 64
+    Miller-Rabin rounds:   [Enter]
+    Optional seed:         [Enter]
+    When done: press c to continue
+
+2. — Diffie-Hellman Key Exchange
+    Select: 3
+    Prime size in bits: 64
+    Miller-Rabin rounds:   [Enter]
+    Optional seed:         [Enter]
+    When done: press c to continue
+
+3. — RSA Encrypt / Decrypt
+    Select: 4
+    m = 42
+    any int between 2 and n works
+    When done: press c to continue
+
+4. — KDF: Derive DES Key + IV
+    Select:  5
+    no input needed, uses the DH secret from Step 2
+    When done: press c to continue
+
+5. — DES-CBC Encrypt / Decrypt
+    Select: 6
+    Enter plaintext:
+    When done: press c to continue
+
+6. — RSA Digital Signature
+    Select: 7
+    Enter message to sign:
+    When done: press e to export
+
+then can export to html file following on-screen instructions
