@@ -23,7 +23,7 @@ def _label(state, symbol: str, expanded: str) -> str:
     EXPANDED: Use plain-language labels for readbility and understanding
     SYMBOLS: Use p, q, n, phi_n, e, d, g, A, B, s...
     """
-    return expanded if state.config.notation_mode == "EXPANDED" else symbol
+    return expanded #if state.config.notation_mode == "EXPANDED" else symbol - I decided I didn't want this and instead of dealing with it Ima just comment it out
 def _prompt_choice(prompt: str, valid: set[str]) -> str:
     while True:
         choice = input(prompt).strip().lower()
@@ -649,7 +649,7 @@ def run_menu_loop(state) -> None:
         print("\nToggles:")
         print(f" t) Trace level: {state.config.trace_level.value}")
         print(f" c) Code view: {state.config.code_view}")
-        print(f" n) Notation mode: {state.config.notation_mode}")
+       # print(f" n) Notation mode: {state.config.notation_mode}")
 
         print("\nModules:")
         print(" 1) Demo (UI + Trace + Export demo)")
@@ -672,9 +672,9 @@ def run_menu_loop(state) -> None:
         if choice == "c":
             state.config.code_view = not state.config.code_view
             continue
-        if choice == "n":
-            state.config.notation_mode = "EXPANDED" if state.config.notation_mode == "SYMBOLS" else "SYMBOLS"
-            continue
+       # if choice == "n":
+        #    state.config.notation_mode = "EXPANDED" if state.config.notation_mode == "SYMBOLS" else "SYMBOLS"
+         #   continue
         if choice == "1":
             _demo_module(state)
             continue
