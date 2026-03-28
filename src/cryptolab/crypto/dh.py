@@ -83,9 +83,9 @@ def dh_key_exchange(
 
     # Pick p
     if p_override is None:
-        trace_summary.append("step 1) Generate prime p (public) using Miller-Rabbin")
+        trace_summary.append("Step 1) Generate prime p (public) using Miller-Rabbin")
         p, p_sum, p_full = generate_prime(bits, mr_rounds, rng)
-        trace_full.append("PRIME p (successful cnadidate):")
+        trace_full.append("PRIME p (successful candidate):")
         trace_full.extend(p_full)
     else:
         p = p_override
@@ -97,7 +97,7 @@ def dh_key_exchange(
             raise ValueError("Provided p is not a prime")
     
     # step 2 pick g
-    trace_summary.append("step 2) Pick a base g (public).")
+    trace_summary.append("Step 2) Pick a base g (public).")
     if g_override is None:
         g = _pick_reasonable_g(p)
         trace_summary.append(f"Using g={g} (sanity check against small factors of p-1)")
@@ -116,7 +116,7 @@ def dh_key_exchange(
     trace_full.append(f"Secret b chosen (FULL only): b={b}")
 
     #step 4: Compute public values A and B
-    trace_summary.append("step 4) Compute public values A=g^a mod p and B=g^b mod p")
+    trace_summary.append("Step 4) Compute public values A = g^a mod p and B = g^b mod p")
     A = modexp(g, a, p)
     B = modexp(g, b, p)
     trace_summary.append("Computed A and B")
@@ -124,7 +124,7 @@ def dh_key_exchange(
     trace_full.append(f"B = g^b mod p (FULL only): B={B}")
 
     #step 5: compute shared secret s two ways
-    trace_summary.append("step 5) Compute shared secret s two ways and verify they match")
+    trace_summary.append("Step 5) Compute the shared secret s two ways and verify they match")
     s_alice = modexp(B, a, p)
     s_bob = modexp(A, b, p)
     trace_full.append(f"s_alice = B^a mod p = {s_alice}")
@@ -134,7 +134,7 @@ def dh_key_exchange(
         raise RuntimeError("DH failed: s_alice != s_bob  but this should never happen if everything is correct")
     
     s = s_alice
-    trace_summary.append("Verified: s_alice == s_bob (shared secret was.... ESTABLISHED!)")
+    trace_summary.append("Verified: s_alice == s_bob (shared secret ESTABLISHED!)")
 
     return{
         "p": p,

@@ -121,7 +121,7 @@ def _demo_module(state) -> None:
     _render_step_to_terminal(state, step)
     _back_to_menu(state)
 def _rsa_keygen_module(state) -> None:
-    state.trace.clear()
+   
 
     print("\nRSA Key Generation Settings:")
     bits_str = input("Prime size in bits with the default at 128: ").strip()
@@ -209,7 +209,7 @@ def _rsa_keygen_module(state) -> None:
     _back_to_menu(state)
 
 def _dh_key_exchange_module(state) -> None:
-    state.trace.clear()
+    
 
     print("\nDiffie-Hellman key exchange settings:")
     bits_str = input("Prime size in bits (default 128): ").strip()
@@ -297,7 +297,7 @@ def _dh_key_exchange_module(state) -> None:
 
 def _rsa_encrypt_decrypt_module(state) -> None:
     """Module 4 — RSA textbook encrypt then decrypt (uses session RSA keys)."""
-    state.trace.clear()
+    
 
     if state.session.rsa_n is None:
         print("\nNo RSA keys in session. Run RSA Key Generation (option 2) first.")
@@ -376,7 +376,7 @@ def _rsa_encrypt_decrypt_module(state) -> None:
 
 def _kdf_module(state) -> None:
     """Module 5 — KDF: derive DES key and IV from the DH shared secret."""
-    state.trace.clear()
+    
 
     if state.session.dh_s is None:
         print("\nNo DH shared secret in session. Run Diffie-Hellman Key Exchange (option 3) first.")
@@ -438,7 +438,7 @@ def _kdf_module(state) -> None:
 
 def _des_cbc_module(state) -> None:
     """Module 6 — DES-CBC encrypt a message, then decrypt it to verify."""
-    state.trace.clear()
+    
 
     if state.session.kdf_key_hex is None:
         print("\nNo DES key in session. Run KDF (option 5) first.")
@@ -523,7 +523,7 @@ def _des_cbc_module(state) -> None:
 
 def _rsa_signature_module(state) -> None:
     """ RSA digital signature: sign a message then verify it"""
-    state.trace.clear()
+    
 
     if state.session.rsa_n is None:
         print("\nNo RSA keys in session. Run RSA Key Generation (option 2) first.")
@@ -603,7 +603,86 @@ def _rsa_signature_module(state) -> None:
     _render_step_to_terminal(state, step)
     _back_to_menu(state)
 
+def _project_design_notes_module(state) -> None:
+    """ 
+    Inentionally does not clear the trace so it can be appended
+    to the most recent crypto run and exported as part of the final report.
+    """
+    step = TraceStep(
+        module="NOTES",
+        title="Project Design Notes / Sources / Demo Notes",
+        goal=(
+            "Explanation: Why the project was designed this way and what sources it relies on," \
+            "and answer questions inside export."
+        ),
+        inputs={
+            "Language": "Python",
+            "Project structure": "crypto/, ui/, io/, models/, tests/, exports/",
+            "Recommendation for demo order": "2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> e",
+        },
+        algorithm_steps=[
+            "Use Python for readability and built-in big int arithmetic.",
+            "Separate the project into modules: crypto/, ui/, io/, models/, tests/, exports/.",
+            "Use RSA for key generation, textbook encryption/decryption and digital signatures.",
+            "Use Diffie-Hellman to demonstrate shared-secret key exchange over an insecure channel.",
+            "Use a KDF after Diffie-Hellman so the shared secret becomes a fixed-size DES key and IV.",
+            "Use DES-CBC because DES is a classic textbook block cipher and CBC is a standard block mode covered in class.",
+            "Use trace levels and export files so the everyone can see both the summary level and full internal computation steps. ",
+            "Use code-view snippets so the demo can show the real implementation directly from the source files.",
+            
+        ],
+        outputs={
+            "Why Python": "Readable, fast to prototype, strong for teaching and supports arbitrary-sized integers.",
+            "Why e = 65537": "Common RSA public exponent; fast and widely used in practice.",
+            "Why Miller-Rabin rounds = 24": "Very low false-prime probability while staying fast for demo.",
+            "Why the PRNG fallback constant exists": "Avoid the all-zero xorshift state and use a stable non-zero seed",
+            "Why DES was chosen": "Textbook cipher that is easier to implement manually than AES",
+            "Why KDF after DH": "Turns the shared secret into a fixed-size DES key and IV",
+            "Primary source set": "Chapter2, chapter 4, chapter 7, chapter 8, chapter 9 and the respective course PDFs.",
+        },
+        trace_summary=[
+            "Python was chosen because it is readable, quick to iterate in, and already supports the big integers needed for RSA and DH.",
+            "Folder split keeps the repo clean: crypto = algorithms, ui = terminal flow, io = exports/storage, models = session state.",
+            "RSA uses e = 65537 because it is the standard public exponent and makes modular exponentiation efficient.",
+            "Miller-Rabin uses 24 rounds because it keeps false-prime probability low while remaining fast enough for the demo.",
+            "The PRNG fallback constant is used so xorshift never starts in the all-zero state, which would break the generator.",
+            "Diffie-Hellman produces a shared secret, but the KDF is needed to derive a fixed-size DES key and IV from it.",
+            "DES-CBC was chosen because DES is a classic cipher and CBC clearly demonstrates IVs and chaining.",
+            "The HTML/Markdown export exists to make marking and class demonstration easier.",
+        ],
+        trace_full=[
+            "Why Python: Python was chosen because it is easier to read in a live demo, faster to prototype during development, and already supports arbitrary-sized integers. That is essential because RSA and Diffie-Hellman use values that grow far beyond normal 32-bit or 64-bit machine integers.",
+            "What big-integer arithemetic means: In many languages, integers have a fixed size and can overflow and in this project, python integers automatically expand to hold larger values so the implementation can focus on modular arithmetic, prime generation and exponentiation instead of overflow handling.",
+            "What the project folders are for: crypto/ contains the actual algorithms and math. ui/ contains the terminal menu and trace rendering. io/ contains exports and saved files. models/ contains session state. tests/ verifies correctness. exports/  stores generated reports. Used to keep a clean structure and to keep presentation and everything separated and easier to explain.",
+            "Main project flow: First generate RSA keys, then run Diffie-Hellman to create a shared secret. Then derive a DES key and IV from that secret, then encrypt/decrypt with DES-CBC, then sign/verify with RSA and finally export the results. Steps depend on the earlier ones.",
+            "How Diffie-Hellman demonstrates a shared secret: Alice compute A = g^a mod p and Bob computes B = g^b mod p. Alice then computes s_alice = B^a mod p and Bob computes s_bob = A^b mod p. Because modular exponentiation composes correctly  both sides will arrive at the same shared secret s without directly sending s itself over the channel.",
+            "Why a KDF is needed after Diffie-Hellman: The DH shared secret is just one large integer. DES cannot use an arbitrary-size integer directly. DES expects fixed-sized symmetric material so the KDF converts the shared secret into an 8-byte DES key and an 8-byte IV.",
+            "Why the fixed-size DES values is important: DES is a fixed-block, fixed-key cipher. The key and IV must each be the right size so the encryption and decryption work properly. The KDF step is what bridges the gap between the large DH integer and the exact lengths needed by DES-CBC.",
+            "Why DES was chosen instead of AES: AES is stronger but it is more complicated to implement manually because of the finite-field arithmetic and a more complex internal structure. DES is older and weaker but it's easier to implement and explain round by round which makes it better for a course demo.",
+            "Why CBC mode was chosen: CBC makes the first block depend on the IV and every later block depend on the previous ciphertext block. This clearly demonstrates the purpose of block chaining and shows why encrypting each block independently would reveal visible patterns.",
+            "What an IV is and why it matters: An initialization vector is the first block-sized value mixed into CBC encryption before the first plaintext block is encrypted. Its role is to prevent is to prevent identical messages from always starting with identical ciphertext patterns.",
+            "What chaining means in CBC: After the first block, each plaintext block is XORed with the previous ciphertext block before encryption. Meaning the encryption of one block influences the next block which is why the mode is called chained.",
+            "Why e = 65537: It is a standard RSA public exponent because it is efficent for modular exponentiation and widely used in practice. It is large enough to avoid weak tiny exponents but still small enough to keep encryption and verification super fast.",
+            "What false-prime probability means: Miller-Rabin is probabilistic. When it says number is probably prime there is a very small chance that the number is actually composite. Each additional round reduces that chance further so more rounds increase the overall confidence in the result.",
+            "Why Miller-Rabin rounds = 24: 24 rounds gives a very low false-prime probability  while still running quickly enough for a live demo. The point is to balance the confidence and speed.",
+            "Why the PRNG fallback constant: XORshift-style generators must never start with internal state 0. If the state were all zero every future shift/XOR would keep producing zero, so the generator would be stuck forever.",
+            "What an all-zero xorshift state is: It is the broken PRNG case where the internal state is 0. Because the update rule only shifts and XORs that zero value, every output would remain 0. Fallback constant prevents that failure.",
+        ],
+        code_ref=[
+            "src/cryptolab/ui/menu.py::_project_design_notes_module",
+            "src/cryptolab/crypto/prng.py::XorShift64Star",
+            "src/cryptolab/crypto/rsa.py::rsa_generate_keypair",
+            "src/cryptolab/crypto/dh.py::dh_key_exchange",
+            "src/cryptolab/crypto/kdf.py::derive_des_key_iv",
+            "src/cryptolab/crypto/des/modes.py::{encrypt_cbc_trace, decrypt_cbc_trace}",
+            "src/cryptolab/crypto/hash.py::{sha256, sha256_trace}",
+        ],
+    )
 
+    state.trace.add(step)
+    save_trace(state.exports_dir / "trace.json", [s.to_json_obj() for s in state.trace.steps()])
+    _render_step_to_terminal(state, step)
+    _back_to_menu(state)
 def _export(state) -> None:
     report_path = (state.exports_dir / "report.html").resolve()
     md_path = (state.exports_dir / "transcript.md").resolve()
@@ -659,9 +738,11 @@ def run_menu_loop(state) -> None:
         print(" 5) KDF: Derive DES Key + IV  (needs DH secret from step 3)")
         print(" 6) DES-CBC Encrypt / Decrypt (needs KDF from step 5)")
         print(" 7) RSA Digital Signature     (needs RSA keys from step 2)")
+        print(" 8) Project design notes / source / demo notes")
 
         print("\nOther:")
         print(" e) Export report (HTML + Markdown)")
+        print(" r) Reset session (clear trace and reset state)")
         print(" x) Exit")
 
         choice = input("\nSelect: ").strip().lower()
@@ -674,7 +755,7 @@ def run_menu_loop(state) -> None:
             continue
        # if choice == "n":
         #    state.config.notation_mode = "EXPANDED" if state.config.notation_mode == "SYMBOLS" else "SYMBOLS"
-         #   continue
+         #   continue 
         if choice == "1":
             _demo_module(state)
             continue
@@ -696,8 +777,16 @@ def run_menu_loop(state) -> None:
         if choice == "7":
             _rsa_signature_module(state)
             continue
+        if choice == "8":
+            _project_design_notes_module(state)
+            continue
         if choice == "e":
             _export(state)
+            continue
+        if choice == "r":
+            state.session.wipe()
+            state.trace.clear()
+            print("\nSession wiped and starting fresh.\n")
             continue
         if choice == "x":
             print("\nExiting Cryptolab. Goodbye!\n")

@@ -16,9 +16,27 @@ how:
 from pathlib import Path
 from cryptolab.ui.trace import TraceLevel
 
+def _legend_dict() -> dict[str, str]:
+    return{
+        "RSA": " Rivest-Shamir-Adleman (Public-key cryptosystem).",
+        "DH": "Diffie-Hellman key exchange.",
+        "KDF": "Key Derivation Function.",
+        "DES": "Data Encryption Standard.",
+        "CBC": "Cipher Block Chaining.",
+        "IV": "Initialization Vector.",
+        "PRNG": "Pseudo Random Number Generator.",
+        "GCD": "Greatest Common Divisor.",
+        "Modexp": "Modular Exponentiation.",
+        "Shared secret": "Same secret both sides derive.",
+        "False-prime probability": "Chance Miller-Rabin accepts a composite as probably prime.",
+    }
 def export_markdown(path: Path, state) -> None:
     lines: list[str] = []
     lines.append(f"# Cryptolab Session Transcript\n")
+    lines.append("## Quick Dictionary / Legend\n")
+    for k, v in _legend_dict().items():
+        lines.append(f"- **{k}**: {v}")
+    lines.append("\n---\n")
 
     lines.append("## Session Status\n")
     for k, v in state.session.summary_for_menu().items():
@@ -26,7 +44,7 @@ def export_markdown(path: Path, state) -> None:
     lines.append("\n---\n")
 
     if state.trace.is_empty():
-        lines.append("No trace steps recorded yet. Run the Demo module first \n")
+        lines.append("No trace steps recorded yet. Run a module first \n")
         path.write_text("\n".join(lines), encoding="utf-8")
         return
     
@@ -48,7 +66,7 @@ def export_markdown(path: Path, state) -> None:
         
         if state.config.trace_level == TraceLevel.SUMMARY:
             lines.append("\n**Trace Summary**:")
-            for t in step.trace_sumamry:
+            for t in step.trace_summary:
                 lines.append(f"- {t}")
         if state.config.trace_level == TraceLevel.FULL:
             lines.append("\n**Trace (Full):**")

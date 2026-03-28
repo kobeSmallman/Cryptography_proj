@@ -32,6 +32,21 @@ def _kv_dict(d: dict) -> str:
         out.append(f"<div><span class='muted'>{escape(str(k))}:</span> {escape(str(v))}</div>")
     out.append("</div>")
     return "\n".join(out)
+
+def _legend_dict() -> dict[str, str]:
+    return{
+        "RSA": " Rivest-Shamir-Adleman (Public-key cryptosystem).",
+        "DH": "Diffie-Hellman key exchange.",
+        "KDF": "Key Derivation Function.",
+        "DES": "Data Encryption Standard.",
+        "CBC": "Cipher Block Chaining.",
+        "IV": "Initialization Vector.",
+        "PRNG": "Pseudo Random Number Generator.",
+        "GCD": "Greatest Common Divisor.",
+        "Modexp": "Modular Exponentiation.",
+        "Shared secret": "Same secret both sides derive.",
+        "False-prime probability": "Chance Miller-Rabin accepts a composite as probably prime.",
+    }
 def _read_text_try_paths(rel_path: str) -> str:
     """
     Read a file:
@@ -81,7 +96,11 @@ def export_html(path: Path, state) -> None:
     html.append(f"<title>Cryptolab Report</title><style>{CSS}</style></head><body>")
 
     html.append("<h1>Cryptolab Report</h1>")
-    html.append("<div class='muted'>Self-contained report: Explanation + Trace + Code refs</div>")
+    html.append("<div class='muted'>Self-contained report: explanation, trace, and code references</div>")
+    html.append("<div class='card'>")
+    html.append("<h2>Quick Dictionary / Legend</h2>")
+    html.append(_kv_dict(_legend_dict()))
+    html.append("</div>")
 
     html.append("<div class='card'>")
     html.append("<h2>Session Status</h2>")
@@ -93,7 +112,7 @@ def export_html(path: Path, state) -> None:
     html.append(_kv_dict({
         "Trace level": state.config.trace_level.value,
         "Code view": state.config.code_view,
-        "Notation mode": state.config.notation_mode,
+        "Notation mode": "Expanded",
     }))
     html.append("</div>")
 
